@@ -141,7 +141,7 @@ export const addProfileImage = async (request, response, next) => {
         }
 
         const date = Date.now();
-        let fileName = "uploads/profiles/" + date + request.file.originalName;
+        let fileName = "uploads/profile/" + date + request.file.originalname;
         renameSync(request.file.path, fileName);
 
         const updatedUser = await User.findByIdAndUpdate(request.userId, { image: fileName }, { new: true, runValidators: true });
@@ -160,26 +160,22 @@ export const addProfileImage = async (request, response, next) => {
 export const removeProfileImage = async (request, response, next) => {
     try {
         const { userId } = request;
-        const { firstName, lastName, color } = request.body;
+        const user = await User.findById(userId);
 
-        if (!firstName || !lastName || color === undefined) {
-            return response.status(400).send("Firstname, Last name and color is required for this API");
+        if (!user) {
+            return response.status(404).send("User not found");
         }
 
-        const userData = await User.findByIdAndUpdate(userId, {
-            firstName, lastName, color, profileSetup: true
-        }, { new: true, runValidators: true }
-        );
+        if (user.image) {
+            unlinkSync(user.image);
+        }
 
-        return response.status(200).json({
-            id: userData.id,
-            email: userData.email,
-            profileSetup: userData.profileSetup,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            image: userData.image,
-            color: userData.color,
-        });
+        user.image = null;
+
+        await user.save();
+
+
+        return response.status(200).send("Profile image removed successfully.");
     } catch (error) {
         console.log({ error });
         return response.status(500).send("Internal Server Error");
